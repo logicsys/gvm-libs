@@ -164,3 +164,47 @@ gvm_ssh_private_key_info (const char *private_key, const char *passphrase,
     return -1;
   return 0;
 }
+
+/**
+ * @brief Applies the user's SSH config file settings to a libssh session.
+ *
+ * This function reads and parses the user's ~/.ssh/config file and applies
+ * the configuration options (Host, HostName, Port, User, etc.) to the given
+ * libssh session. If a hostname is provided, host-specific settings will be
+ * applied.
+ *
+ * @param[in]   session         libssh session to configure.
+ * @param[in]   hostname        Hostname to lookup in config (can be NULL).
+ *
+ * @return 0 on success, -1 on error.
+ */
+int
+gvm_ssh_apply_user_config (ssh_session session, const char *hostname)
+{
+  int rc;
+
+  if (session == NULL)
+    return -1;
+
+  /* If hostname is provided, set it first so config parsing can use it */
+  if (hostname != NULL)
+    {
+      rc = ssh_options_set (session, SSH_OPTIONS_HOST, hostname);
+      if (rc != SSH_OK)
+        {
+          g_warning ("Failed to set SSH hostname: %s", ssh_get_error (session));
+          return -1;
+        }
+    }
+
+  /* Parse user's SSH config file (~/.ssh/config)
+   * NULL means use the default config file location */
+  rc = ssh_options_parse_config (session, NULL);
+  if (rc != SSH_OK)
+    {
+      g_warning ("Failed to parse SSH config: %s", ssh_get_error (session));
+      return -1;
+    }
+
+  return 0;
+}
